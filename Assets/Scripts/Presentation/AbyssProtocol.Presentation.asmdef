@@ -1,0 +1,18 @@
+{
+    "name": "AbyssProtocol.Presentation",
+    "rootNamespace": "AbyssProtocol.Presentation",
+    "references": [
+        "AbyssProtocol.Core",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
