@@ -243,21 +243,6 @@ namespace AbyssProtocol.Tests
             Assert.That(Math.Abs(hits - n / 6.0), Is.LessThan(200));
         }
 
-        [Test]
-        public void FGTrigger_HitRate_AboutOneSixth()
-        {
-            IRandom rng = new SystemRandom(54321);
-            int hits = 0;
-            const int n = 6000;
-            for (int i = 0; i < n; i++)
-            {
-                SpecialDie d = new SpecialDie(SpecialDiceKind.FGTrigger, rng);
-                d.Roll();
-                if (d.FGTriggered) hits++;
-            }
-            Assert.That(Math.Abs(hits - n / 6.0), Is.LessThan(200));
-        }
-
         // ---------------- Full FSM flow ----------------
 
         [Test]
@@ -267,7 +252,7 @@ namespace AbyssProtocol.Tests
             {
                 3, 3, 3, 5, 5,   // player => FullHouse
                 1, 1, 2, 2, 4,   // ai => TwoPairs
-                3                // FGTrigger face 3 => no FG
+                3                // 特殊骰面（General 模式為 None，僅消耗一個亂數）
             };
             GameStateMachine fsm = new GameStateMachine(new ScriptedRandom(script));
 
@@ -286,42 +271,6 @@ namespace AbyssProtocol.Tests
 
             fsm.AcknowledgeSettlement();
             Assert.AreEqual(GamePhase.Idle, fsm.CurrentPhase);
-        }
-
-        [Test]
-        public void FullRound_TriggersFG_FiveRounds_Accumulates()
-        {
-            List<int> script = new List<int>();
-            script.AddRange(new[] { 3, 3, 3, 5, 5, 1, 1, 2, 2, 4, 0 }); // trigger FG
-            for (int r = 0; r < 5; r++)
-            {
-                script.AddRange(new[] { 3, 3, 3, 5, 5, 1, 1, 2, 2, 4, 2 }); // DoubleEdge x1
-            }
-
-            GameStateMachine fsm = new GameStateMachine(new ScriptedRandom(script.ToArray()));
-
-            int fgFinished = -1;
-            fsm.FGFinished += t => fgFinished = t;
-
-            fsm.ConfigureRound(GameMode.General, DiceType.D6, 100, SpecialDiceKind.None);
-            fsm.BeginRound();
-            fsm.EndReroll();
-            Assert.AreEqual(GamePhase.FGTransition, fsm.CurrentPhase);
-
-            fsm.ChooseFGSpecialDie(SpecialDiceKind.DoubleEdge);
-            for (int r = 0; r < 5; r++)
-            {
-                Assert.AreEqual(GamePhase.PlayerReroll, fsm.CurrentPhase);
-                fsm.EndReroll();
-            }
-
-            Assert.AreEqual(GamePhase.Settlement, fsm.CurrentPhase);
-            Assert.AreEqual(6000, fgFinished); // 1000 trigger + 5x1000
-            Assert.AreEqual(6000, fsm.Context.SessionHighScore);
-
-            fsm.AcknowledgeSettlement();
-            Assert.AreEqual(GamePhase.Idle, fsm.CurrentPhase);
-            Assert.IsFalse(fsm.Context.IsInFG);
         }
     }
 }

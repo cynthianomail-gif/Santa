@@ -37,13 +37,12 @@ namespace AbyssProtocol.Core
         Reroll
     }
 
-    /// <summary>特殊骰種類（玩家專用第 6 顆）。</summary>
+    /// <summary>特殊骰種類（玩家專用第 6 顆，僅 Chaos 模式使用）。</summary>
     public enum SpecialDiceKind
     {
         None = 0,
         DoubleEdge,
-        Cursed,
-        FGTrigger
+        Cursed
     }
 
     /// <summary>遊戲模式。</summary>
@@ -69,9 +68,6 @@ namespace AbyssProtocol.Core
         // ---- 押注檔位 ----
         public static readonly int[] BetTiers = { 100, 200, 300, 500, 800, 1000 };
         public const int DefaultBet = 100;
-
-        // ---- FG ----
-        public const int FGRounds = 5;
 
         // ---- 玩家預設重擲次數 ----
         public const int DefaultRerollLimit = 1;

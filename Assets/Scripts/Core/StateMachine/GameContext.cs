@@ -21,23 +21,15 @@ namespace AbyssProtocol.Core
         public int PlayerRerollLimit = GameConfig.DefaultRerollLimit;
         public int RerollsUsed;
 
-        // ---- FG 狀態 ----
-        public bool PendingFG;
-        public int FGRoundsRemaining;
-        public int FGBaseBet;
-        public bool IsInFG;
-
         // ---- 結算紀錄 ----
         public int LastPayout;       // 最近一局獲得金額
-        public int FGAccumulated;    // FG 期間累計
-        public int SessionHighScore; // 本 Session 最高單局（含 FG 總計）
+        public int SessionHighScore; // 本 Session 最高單局
 
         /// <summary>重置與「單一牌局」相關的暫態，保留跨局/跨 Session 紀錄。</summary>
         public void ResetRoundState()
         {
             PlayerRerollLimit = GameConfig.DefaultRerollLimit;
             RerollsUsed = 0;
-            PendingFG = false;
             LastPayout = 0;
 
             if (PlayerDice != null)

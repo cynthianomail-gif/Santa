@@ -21,10 +21,11 @@ namespace AbyssProtocol.Core
         /// <summary>
         /// Destroyer（毀滅）：將 AI 當前「最大點數」的一顆骰子強制變為 1。
         /// 若同局觸發多顆 Destroyer，呼叫端應對每顆各執行一次本方法。
+        /// 回傳被擊中的骰子索引（供表現層標示變化位置），無作用對象則回傳 -1。
         /// </summary>
-        public void HandleDestroyer(Die[] aiDice)
+        public int HandleDestroyer(Die[] aiDice)
         {
-            if (aiDice == null || aiDice.Length == 0) return;
+            if (aiDice == null || aiDice.Length == 0) return -1;
 
             int maxIndex = 0;
             for (int i = 1; i < aiDice.Length; i++)
@@ -35,6 +36,7 @@ namespace AbyssProtocol.Core
                 }
             }
             aiDice[maxIndex].ForceValue(1);
+            return maxIndex;
         }
 
         /// <summary>

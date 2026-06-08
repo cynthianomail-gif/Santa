@@ -60,9 +60,11 @@ namespace AbyssProtocol.Presentation
 
             Button btn = go.GetComponent<Button>();
             ColorBlock cb = btn.colors;
-            cb.normalColor = Color.white;
-            cb.highlightedColor = new Color(1f, 0.8f, 0.8f);
-            cb.pressedColor = new Color(0.7f, 0.5f, 0.5f);
+            cb.normalColor      = new Color(1f, 1f, 1f, 1f);
+            cb.highlightedColor = new Color(1.0f, 0.75f, 0.75f, 1f);
+            cb.pressedColor     = new Color(0.6f, 0.4f, 0.4f, 1f);
+            cb.disabledColor    = new Color(0.5f, 0.5f, 0.5f, 0.6f);
+            cb.colorMultiplier  = 1f;
             btn.colors = cb;
             if (onClick != null) btn.onClick.AddListener(() => onClick());
 

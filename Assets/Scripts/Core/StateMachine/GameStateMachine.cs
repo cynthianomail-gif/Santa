@@ -25,7 +25,7 @@ namespace AbyssProtocol.Core
     ///
     /// 表現層透過事件接收狀態變化，並以公開輸入方法驅動流程：
     ///   ConfigureRound → BeginRound → (自動擲骰/效果) → ToggleLock/ConfirmReroll/EndReroll
-    ///   → (自動結算) → AcknowledgeSettlement / ChooseFGSpecialDie
+    ///   → (自動結算) → AcknowledgeSettlement
     ///
     /// 深淵效果時序：
     ///   - Scry / Reroll：EffectTrigger 階段（玩家重擲前），依「首次擲骰」結果觸發。
@@ -51,10 +51,10 @@ namespace AbyssProtocol.Core
         public event Action DiceRolled;
         public event Action<int[]> ScryRevealed;
         public event Action<AbyssEffect> AbyssEffectApplied;
+        /// <summary>Destroyer 命中目標時觸發，回傳被強制歸一的 AI 骰索引（供表現層標示變化位置）。</summary>
+        public event Action<int> AbyssDestroyerHit;
         public event Action<HandRank, HandRank, Winner, int> RoundEvaluated;
         public event Action<int> RoundSettled;
-        public event Action FGStarted;
-        public event Action<int> FGFinished;
 
         public GameStateMachine(IRandom random)
         {
@@ -68,8 +68,6 @@ namespace AbyssProtocol.Core
             Register(new EffectTriggerState(this));
             Register(new PlayerRerollState(this));
             Register(new EvaluationState(this));
-            Register(new FGTransitionState(this));
-            Register(new FGLoopState(this));
             Register(new SettlementState(this));
 
             _current = _states[GamePhase.Idle];
@@ -148,21 +146,6 @@ namespace AbyssProtocol.Core
             Transition(GamePhase.Evaluation);
         }
 
-        /// <summary>FGTransition：玩家二選一特殊骰，確認後進入 FG 連續對局。</summary>
-        public void ChooseFGSpecialDie(SpecialDiceKind kind)
-        {
-            if (CurrentPhase != GamePhase.FGTransition) return;
-            if (kind != SpecialDiceKind.DoubleEdge && kind != SpecialDiceKind.Cursed) return;
-
-            Context.SpecialDice = kind;
-            Context.IsInFG = true;
-            Context.FGRoundsRemaining = GameConfig.FGRounds;
-            // 觸發 FG 的那一局收益併入 FG 累計總分。
-            Context.FGAccumulated = Context.LastPayout;
-            RaiseFGStarted();
-            Transition(GamePhase.BaseGameRoll);
-        }
-
         /// <summary>Settlement → Idle。</summary>
         public void AcknowledgeSettlement()
         {
@@ -197,15 +180,14 @@ namespace AbyssProtocol.Core
 
             Context.PlayerRerollLimit = GameConfig.DefaultRerollLimit;
             Context.RerollsUsed = 0;
-            Context.PendingFG = Context.PlayerSpecialDie.FGTriggered;
         }
 
-        /// <summary>決定本局第 6 顆特殊骰的種類。</summary>
+        /// <summary>決定本局第 6 顆特殊骰的種類：General 無特殊骰，Chaos 用玩家選的。</summary>
         private SpecialDiceKind ResolveActiveSpecialKind()
         {
-            if (Context.IsInFG) return Context.SpecialDice;               // FG 期間用玩家選的特殊骰
-            if (Context.Mode == GameMode.General) return SpecialDiceKind.FGTrigger;
-            return Context.SpecialDice;                                   // Chaos 用玩家選的特殊骰
+            return Context.Mode == GameMode.General
+                ? SpecialDiceKind.None
+                : Context.SpecialDice;
         }
 
         /// <summary>重擲前效果：Scry（揭露 AI）與 Reroll（+次數），依首次擲骰結果。</summary>
@@ -264,7 +246,8 @@ namespace AbyssProtocol.Core
             }
             for (int i = 0; i < destroyerCount; i++)
             {
-                _effects.HandleDestroyer(Context.AIDice);
+                int hitIndex = _effects.HandleDestroyer(Context.AIDice);
+                if (hitIndex >= 0) RaiseAbyssDestroyerHit(hitIndex);
                 RaiseAbyssEffectApplied(AbyssEffect.Destroyer);
             }
 
@@ -272,7 +255,7 @@ namespace AbyssProtocol.Core
             HandRank aiRank = PokerEvaluator.Evaluate(Context.GetAIValues());
             Winner winner = PayoutCalculator.DetermineWinner(playerRank, aiRank);
 
-            int bet = Context.IsInFG ? Context.FGBaseBet : Context.BaseBet;
+            int bet = Context.BaseBet;
             float specialMult = Context.PlayerSpecialDie.Multiplier;
             int payout = PayoutCalculator.ResolveRound(
                 bet, playerRank, aiRank, Context.ActiveDiceType, specialMult);
@@ -288,9 +271,8 @@ namespace AbyssProtocol.Core
         internal void RaiseDiceRolled() { var h = DiceRolled; if (h != null) h(); }
         internal void RaiseScryRevealed(int[] v) { var h = ScryRevealed; if (h != null) h(v); }
         internal void RaiseAbyssEffectApplied(AbyssEffect e) { var h = AbyssEffectApplied; if (h != null) h(e); }
+        internal void RaiseAbyssDestroyerHit(int index) { var h = AbyssDestroyerHit; if (h != null) h(index); }
         internal void RaiseRoundEvaluated(HandRank p, HandRank a, Winner w, int pay) { var h = RoundEvaluated; if (h != null) h(p, a, w, pay); }
         internal void RaiseRoundSettled(int score) { var h = RoundSettled; if (h != null) h(score); }
-        internal void RaiseFGStarted() { var h = FGStarted; if (h != null) h(); }
-        internal void RaiseFGFinished(int total) { var h = FGFinished; if (h != null) h(total); }
     }
 }

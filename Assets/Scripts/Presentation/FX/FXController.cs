@@ -53,11 +53,6 @@ namespace AbyssProtocol.Presentation
             Flash(winner == Winner.Player ? InkRed : InkBlack, 0.5f);
         }
 
-        public void PlayFGTransition()
-        {
-            Flash(InkRed, 1.0f);
-        }
-
         public void PlayAbyss(AbyssEffect effect)
         {
             // 各效果以不同濃度的墨水短閃做回饋。

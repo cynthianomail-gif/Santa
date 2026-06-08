@@ -8,8 +8,6 @@ namespace AbyssProtocol.Core
         EffectTrigger,
         PlayerReroll,
         Evaluation,
-        FGTransition,
-        FGLoop,
         Settlement
     }
 }

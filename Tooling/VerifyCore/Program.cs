@@ -51,7 +51,6 @@ namespace AbyssProtocol.Verify
             TestDestroyer();
             TestSpecialDieProbability();
             TestFullRoundGeneralNoFG();
-            TestFullRoundWithFG();
 
             Console.WriteLine("\n=== Results: " + _passed + " passed, " + _failed + " failed ===");
             return _failed == 0 ? 0 : 1;
@@ -166,7 +165,6 @@ namespace AbyssProtocol.Verify
 
             IRandom rng = new SystemRandom(12345);
             int cursedHits = 0;
-            int fgHits = 0;
             const int n = 6000;
 
             for (int i = 0; i < n; i++)
@@ -174,17 +172,11 @@ namespace AbyssProtocol.Verify
                 SpecialDie cursed = new SpecialDie(SpecialDiceKind.Cursed, rng);
                 cursed.Roll();
                 if (cursed.Multiplier == 6f) cursedHits++;
-
-                SpecialDie fg = new SpecialDie(SpecialDiceKind.FGTrigger, rng);
-                fg.Roll();
-                if (fg.FGTriggered) fgHits++;
             }
 
             double expected = n / 6.0;
             AssertTrue(Math.Abs(cursedHits - expected) < 200,
                 "Cursed x6 ~1/6 (got " + cursedHits + " / exp ~" + (int)expected + ")");
-            AssertTrue(Math.Abs(fgHits - expected) < 200,
-                "FGTrigger ~1/6 (got " + fgHits + " / exp ~" + (int)expected + ")");
         }
 
         // ---------- Full round: General, no FG ----------
@@ -192,12 +184,12 @@ namespace AbyssProtocol.Verify
         {
             Section("FSM: General round (no FG)");
 
-            // 玩家 [3,3,3,5,5]=FullHouse, AI [1,1,2,2,4]=TwoPairs, 特殊骰 FGTrigger face=3 (不觸發FG)
+            // 玩家 [3,3,3,5,5]=FullHouse, AI [1,1,2,2,4]=TwoPairs, 特殊骰 None face=3
             int[] script =
             {
                 3, 3, 3, 5, 5,   // player standard
                 1, 1, 2, 2, 4,   // ai standard
-                3                // special (FGTrigger, face 3 => no FG)
+                3                // special (General=None，僅消耗一個亂數)
             };
             GameStateMachine fsm = new GameStateMachine(new ScriptedRandom(script));
 
@@ -217,56 +209,6 @@ namespace AbyssProtocol.Verify
 
             fsm.AcknowledgeSettlement();
             AssertTrue(fsm.CurrentPhase == GamePhase.Idle, "returns to Idle");
-        }
-
-        // ---------- Full round: triggers FG, 5 FG rounds ----------
-        private static void TestFullRoundWithFG()
-        {
-            Section("FSM: General round triggering FG (5 rounds)");
-
-            List<int> script = new List<int>();
-            // 觸發局：玩家 FullHouse, AI TwoPairs, FGTrigger face 0 => FG!
-            script.AddRange(new[] { 3, 3, 3, 5, 5, 1, 1, 2, 2, 4, 0 });
-            // 5 個 FG 局：玩家 FullHouse, AI TwoPairs, DoubleEdge face 2 => x1
-            for (int r = 0; r < 5; r++)
-            {
-                script.AddRange(new[] { 3, 3, 3, 5, 5, 1, 1, 2, 2, 4, 2 });
-            }
-
-            GameStateMachine fsm = new GameStateMachine(new ScriptedRandom(script.ToArray()));
-
-            bool fgStarted = false;
-            int fgFinished = -1;
-            int settled = -1;
-            fsm.FGStarted += () => fgStarted = true;
-            fsm.FGFinished += t => fgFinished = t;
-            fsm.RoundSettled += s => settled = s;
-
-            fsm.ConfigureRound(GameMode.General, DiceType.D6, 100, SpecialDiceKind.None);
-            fsm.BeginRound();
-            fsm.EndReroll(); // 觸發局重擲階段結束
-            AssertTrue(fsm.CurrentPhase == GamePhase.FGTransition, "reaches FGTransition");
-
-            fsm.ChooseFGSpecialDie(SpecialDiceKind.DoubleEdge);
-            AssertTrue(fgStarted, "FGStarted fired");
-
-            // 5 個 FG 局，每局結束重擲
-            for (int r = 0; r < 5; r++)
-            {
-                AssertTrue(fsm.CurrentPhase == GamePhase.PlayerReroll,
-                    "FG round " + (r + 1) + " at PlayerReroll");
-                fsm.EndReroll();
-            }
-
-            AssertTrue(fsm.CurrentPhase == GamePhase.Settlement, "FG reaches Settlement");
-            // 觸發局 1000 + 5 x 1000 = 6000
-            AssertInt(fgFinished, 6000, "FGFinished total = 6000");
-            AssertInt(settled, 6000, "RoundSettled = 6000");
-            AssertInt(fsm.Context.SessionHighScore, 6000, "high score = 6000");
-
-            fsm.AcknowledgeSettlement();
-            AssertTrue(fsm.CurrentPhase == GamePhase.Idle, "returns to Idle");
-            AssertTrue(!fsm.Context.IsInFG, "FG flag cleared");
         }
 
         // ---------- assert helpers ----------

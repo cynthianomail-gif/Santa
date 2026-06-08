@@ -4,36 +4,31 @@ using AbyssProtocol.Core;
 
 namespace AbyssProtocol.Presentation
 {
-    /// <summary>結算面板：顯示雙方牌型、勝負與本局（或 FG 累計）獲得金額。</summary>
+    /// <summary>
+    /// 得分面板（僅玩家贏時顯示）：上方倍數、分隔線、下方贏分。
+    /// 牌型文字改顯示於骰子下方（見 UIManager.ShowHandLabels）。
+    /// </summary>
     public sealed class ResultDisplay : MonoBehaviour
     {
-        public TextMeshProUGUI HandText;
-        public TextMeshProUGUI PayoutText;
+        public TextMeshProUGUI HandText;   // 上方大字（倍數）
+        public TextMeshProUGUI PayoutText; // 下方小字（贏分）
 
-        private static readonly Color Win = new Color(0.95f, 0.85f, 0.4f);
-        private static readonly Color Lose = new Color(0.8f, 0.2f, 0.2f);
+        private static readonly Color TopColor    = Color.white;
+        private static readonly Color BottomColor = new Color(0.80f, 0.84f, 0.92f);
 
-        public void Show(HandRank player, HandRank ai, Winner winner, int payout)
+        /// <summary>顯示倍數與贏分（呼叫端只在玩家贏時呼叫）。</summary>
+        public void Show(int payout, int bet)
         {
+            float mult = bet > 0 ? (float)payout / bet : 0f;
             if (HandText != null)
             {
-                HandText.text = "你: " + HandName(player) + "    撒旦: " + HandName(ai);
+                HandText.color = TopColor;
+                HandText.text = mult.ToString("0.00") + "×"; // ×
             }
             if (PayoutText != null)
             {
-                bool won = winner == Winner.Player;
-                PayoutText.color = won ? Win : Lose;
-                PayoutText.text = won ? ("本局獲得  " + payout) : "撒旦獲勝  本局獲得 0";
-            }
-        }
-
-        public void ShowFGTotal(int total)
-        {
-            if (HandText != null) HandText.text = "FREE GAME 結束";
-            if (PayoutText != null)
-            {
-                PayoutText.color = Win;
-                PayoutText.text = "FG 累計獲得  " + total;
+                PayoutText.color = BottomColor;
+                PayoutText.text = "$" + payout.ToString("N0");
             }
         }
 
@@ -41,15 +36,15 @@ namespace AbyssProtocol.Presentation
         {
             switch (rank)
             {
-                case HandRank.FiveOfAKind: return "五條";
-                case HandRank.FourOfAKind: return "四條";
-                case HandRank.LargeStraight: return "大順";
-                case HandRank.FullHouse: return "葫蘆";
-                case HandRank.SmallStraight: return "小順";
-                case HandRank.ThreeOfAKind: return "三條";
-                case HandRank.TwoPairs: return "兩對";
-                case HandRank.OnePair: return "一對";
-                default: return "散牌";
+                case HandRank.FiveOfAKind:   return "Five of a Kind";
+                case HandRank.FourOfAKind:   return "Four of a Kind";
+                case HandRank.LargeStraight: return "Large Straight";
+                case HandRank.FullHouse:     return "Full House";
+                case HandRank.SmallStraight: return "Small Straight";
+                case HandRank.ThreeOfAKind:  return "Three of a Kind";
+                case HandRank.TwoPairs:      return "Two Pairs";
+                case HandRank.OnePair:       return "One Pair";
+                default:                     return "High Card";
             }
         }
     }
